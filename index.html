@@ -1901,8 +1901,7 @@ var seasonTimerSeconds = 71*3600+59*60+48;
 // ============================================================
 //  14. Tick
 // ============================================================
-var _smoothLastTick = 0;
-function gameTick() { try { _smoothLastTick = Date.now();
+function gameTick() { try {
   if (seasonTimerSeconds>0) { seasonTimerSeconds-=1; } else { seasonTimerSeconds=SEASON_DURATION-1; advanceSeason(); }
   if (dayTimer>0) { dayTimer-=1; } else { dayTimer=DAY_DURATION; generateDailyNPCs(); pushLog('新的一天','','游客刷新','🚶',0);
     // 每日结算：未喂养的动物扣减好感度，重置 isFed
@@ -2126,7 +2125,7 @@ function gameTick() { try { _smoothLastTick = Date.now();
       var fillBar = plotCardEl.querySelector('.progress-fill');
       if (fillBar) fillBar.style.width = pct + '%';
       var botEl = plotCardEl.querySelector('.h-5.flex.items-center.justify-center');
-      if (botEl) botEl.textContent = dispSec + 's';
+      if (botEl) botEl.innerHTML = '<span class="text-xs text-green-700 font-extrabold">'+pct+'%</span>';
     }
   }
   renderActionBar();
@@ -2792,7 +2791,7 @@ function renderFishingPage(mc, locId) {
 
   var progressBar = '';
   if (isActive) {
-    progressBar = '<div class="mb-3"><div class="w-full h-3 bg-earth/10 rounded-full overflow-hidden"><div class="progress-fill h-full bg-blue-400 rounded-full" style="width:'+progress+'%;transition:width 100ms linear"></div></div><p class="text-xs text-earth/50 tabular-nums font-bold text-center mt-1">⏱ '+formatTimeMS(playerFishingState.remainingS)+' / '+formatTimeMS(playerFishingState.totalS)+'</p></div>';
+    progressBar = '<div class="mb-3"><div class="w-full h-3 bg-earth/10 rounded-full overflow-hidden"><div class="progress-fill h-full bg-blue-400 rounded-full" style="width:'+progress+'%"></div></div><p class="text-xs text-earth/50 tabular-nums font-bold text-center mt-1">⏱ '+formatTimeMS(playerFishingState.remainingS)+' / '+formatTimeMS(playerFishingState.totalS)+'</p></div>';
   }
 
   var baitSpeedHint = playerFishingState.baitEquipped ? '<span class="text-xs px-2 py-0.5 rounded-full bg-green-100 text-green-700 font-bold">⚡ 速度+20%</span>' : '';
@@ -2841,7 +2840,7 @@ function renderCrabPotPage(mc) {
           '<span class="text-sm font-extrabold text-soildark">🦀 蟹笼 #'+(i+1)+'</span>'+
           '<span class="text-xs px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200 font-bold">'+locLabel+'</span>'+
         '</div>'+
-        '<div class="w-full h-2.5 bg-earth/10 rounded-full overflow-hidden mb-2"><div class="progress-fill h-full bg-cyan-400 rounded-full" style="width:'+progress+'%;transition:width 100ms linear"></div></div>'+
+        '<div class="w-full h-2.5 bg-earth/10 rounded-full overflow-hidden mb-2"><div class="progress-fill h-full bg-cyan-400 rounded-full" style="width:'+progress+'%"></div></div>'+
         '<p class="text-xs text-earth/50 tabular-nums font-bold mb-2">⏱ 下一轮:'+formatTimeMS(pot.remainingS)+'</p>'+
         '<div class="flex flex-wrap gap-1.5 mb-2">'+storedHTML+'</div>'+
         '<div class="flex gap-2">'+
@@ -3076,7 +3075,7 @@ function renderNodeCard(node) {
     var isActiveNode = currentActiveAction && currentActiveAction.type==='NODE' && currentActiveAction.nodeId===node.id;
     if (isActiveNode) {
       var pct = Math.round((1-currentActiveAction.remainingS/currentActiveAction.totalS)*100);
-      track1HTML = '<div class="node-action-progress px-3 py-2 rounded-lg text-xs font-extrabold text-amber-800 bg-amber-100 border-2 border-amber-300/50 w-full text-center cursor-pointer" onclick="cancelNodeAction()" title="点击取消挂机">⏳ 采集中... <span class="progress-text">'+currentActiveAction.remainingS+'</span>s <span class="text-red-500">(点击取消)</span><div class="w-full h-2 bg-amber-200 rounded-full overflow-hidden mt-1"><div class="progress-fill h-full bg-amber-500 rounded-full" style="transition:width 100ms linear;width:'+pct+'%"></div></div></div>';
+      track1HTML = '<div class="node-action-progress px-3 py-2 rounded-lg text-xs font-extrabold text-amber-800 bg-amber-100 border-2 border-amber-300/50 w-full text-center cursor-pointer" onclick="cancelNodeAction()" title="点击取消挂机">⏳ 采集中... <span class="progress-text">'+currentActiveAction.remainingS+'</span>s <span class="text-red-500">(点击取消)</span><div class="w-full h-2 bg-amber-200 rounded-full overflow-hidden mt-1"><div class="progress-fill h-full bg-amber-500 rounded-full" style="transition:width 0.3s linear;width:'+pct+'%"></div></div></div>';
     } else {
       track1HTML = '<button class="node-action-btn px-3 py-2 rounded-lg text-xs font-extrabold text-white bg-green-600/80 hover:bg-green-600 border-2 border-green-500/30 transition-colors w-full" data-node-id="'+node.id+'" data-node-type="'+node.type+'" data-node-level="'+level+'">'+(nodeTypeLabels[node.type]||'🚶 玩家亲自挂机')+'</button>';
     }
@@ -3835,7 +3834,7 @@ function renderHusbandryPage(mc) {
     } else {
       statusStyle = isReady ? 'border-amber-400/60 bg-amber-50/50' : 'border-soildark/25';
       var progBarColor = isReady ? 'bg-amber-500' : 'bg-sprout';
-      progHTML = '<div class="w-full h-2.5 bg-earth/10 rounded-full overflow-hidden"><div class="progress-fill h-full '+progBarColor+' rounded-full" style="transition:width 100ms linear;width:'+(isReady?100:progress)+'%"></div></div>';
+      progHTML = '<div class="w-full h-2.5 bg-earth/10 rounded-full overflow-hidden"><div class="progress-fill h-full '+progBarColor+' rounded-full" style="transition:width 0.3s linear;width:'+(isReady?100:progress)+'%"></div></div>';
       statusBadge = isReady ? '<span class="text-xs px-2 py-0.5 rounded-full bg-amber-200 text-amber-800 font-extrabold">可收获</span>' : '<span class="text-xs px-2 py-0.5 rounded-full bg-green-100 text-green-700 font-bold">生产中</span>';
       remainingStr = isReady ? '可收获' : formatTimeMS(inst.remainingS);
 	      collectDisabled = sc <= 0;
@@ -4071,13 +4070,9 @@ function doFeedAnimal(uid, cropItemId, cropQuality) {
   if (!hasFood) { showToast('❌ 粮草不足，无法喂养'); closeFeedSelection(); return; }
   closeFeedSelection();
   var bldInfo3 = getAnimalBuildingInfo(uid);
-  // 互斥：NODE 采集行动自动取消；其他行动走弹窗/队列
+  // 互斥：NODE/FARMING 均走打断弹窗；仅 HUSBANDRY 同类型排队
   if (currentActiveAction) {
-    if (currentActiveAction.type==='NODE') {
-      if (currentActiveAction._bufferTimer) { clearTimeout(currentActiveAction._bufferTimer); currentActiveAction._bufferTimer=null; }
-      currentActiveAction=null;
-      globalActionQueue=[];
-    } else if (currentActiveAction.type==='FARMING' || currentActiveAction.type==='NODE') {
+    if (currentActiveAction.type==='NODE' || currentActiveAction.type==='FARMING') {
       // 种植进行中：弹窗打断确认
       pendingInterrupt = { plotId:null, seedId:null, source:'husbandryAction', skipTilling:false, targetRegion:null, targetSubTab:null,
         husbandryAction: { type:'HUSBANDRY', action:'feed', uid:uid, cropItemId:cropItemId, cropQuality:cropQuality, icon:'🍎', label:'正在 ['+(bldInfo3?bldInfo3.tierName:'未知')+'] 喂养 '+inst.name } };
@@ -4710,7 +4705,7 @@ function renderFishpondPage(mc) {
               '<span class="text-base font-extrabold text-soildark">'+sf.icon+' '+sf.name+'</span>'+
               '<span class="text-xs text-earth/50 tabular-nums font-bold">×'+slot.count+'/10 · '+spb+'s/轮</span>'+
             '</div>'+
-            '<div class="w-full h-2 bg-earth/10 rounded-full overflow-hidden mb-1.5"><div class="progress-fill h-full bg-cyan-400 rounded-full" style="width:'+prog+'%;transition:width 100ms linear"></div></div>'+
+            '<div class="w-full h-2 bg-earth/10 rounded-full overflow-hidden mb-1.5"><div class="progress-fill h-full bg-cyan-400 rounded-full" style="width:'+prog+'%"></div></div>'+
             '<div class="flex items-center justify-between mb-2">'+storedHTML+'</div>'+
             '<div class="flex gap-1">'+
               '<button class="flex-1 py-1.5 rounded-lg text-xs font-bold text-amber-800 bg-amber-50/80 border border-amber-200 hover:bg-amber-100/60 transition-colors" onclick="feedPond('+"'"+pu.id+"'"+','+i+')">🍃 喂食</button>'+
@@ -5447,7 +5442,7 @@ function plotCard(p) {
   // 种植行动中：显示实时进度条
   if (isActive && currentActiveAction && currentActiveAction.type!=='NODE') {
     var farmPct = Math.round((1-currentActiveAction.remainingS/currentActiveAction.totalS)*100);
-    progRow = '<div class="w-full bg-green-200 rounded-full overflow-hidden h-2"><div class="progress-fill h-full bg-green-500 rounded-full" style="transition:width 100ms linear;width:'+farmPct+'%"></div></div>';
+    progRow = '<div class="w-full bg-green-200 rounded-full overflow-hidden h-2"><div class="progress-fill h-full bg-green-500 rounded-full" style="transition:width 0.3s linear;width:'+farmPct+'%"></div></div>';
   }
   // 底部文字 (h-5)
   var bottomRow = '<div class="h-4"></div>';
@@ -5539,7 +5534,7 @@ function plotCard(p) {
         iconStr='<span class="text-2xl">'+step.icon+'</span>';
         nameStr='<span class="text-sm font-extrabold text-soildark">'+p.cropName+'</span>';
         statusRow='<span class="text-xs text-amber-700 font-bold">'+step.label+'中</span>';
-        progRow='<div class="w-full h-2 bg-amber-200 rounded-full overflow-hidden"><div class="progress-fill h-full bg-amber-600 rounded-full" style="width:'+pct+'%;transition:width 100ms linear"></div></div>';
+        progRow='<div class="w-full h-2 bg-amber-200 rounded-full overflow-hidden"><div class="progress-fill h-full bg-amber-600 rounded-full" style="width:'+pct+'%"></div></div>';
         bottomRow='<span class="text-xs text-amber-600 tabular-nums font-extrabold">'+currentActiveAction.remainingS+'s</span>';
       } else if (isQueued) {
         style='border-2 border-dashed border-slate-300/60 bg-slate-100/40';
@@ -5561,7 +5556,7 @@ function plotCard(p) {
         iconStr='<span class="text-2xl opacity-70">'+p.icon+'</span>';
         nameStr='<span class="text-sm font-extrabold text-soildark">'+p.cropName+'</span>';
         statusRow='<span class="text-xs text-red-600 font-extrabold">💧 需浇水 · 💀 枯萎倒计时</span>';
-        progRow='<div class="w-full h-2 bg-red-200 rounded-full overflow-hidden"><div class="progress-fill h-full bg-red-500 rounded-full" style="width:'+wp+'%;transition:width 100ms linear"></div></div>';
+        progRow='<div class="w-full h-2 bg-red-200 rounded-full overflow-hidden"><div class="progress-fill h-full bg-red-500 rounded-full" style="width:'+wp+'%"></div></div>';
         bottomRow='<span class="text-xs text-red-500 tabular-nums font-extrabold">'+formatTime(p.wiltTimer)+'</span>';
       } else if (p.cropId && p.resumeFrom==='WATERING') {
         style='border-2 border-blue-300/50 bg-blue-50/40';
@@ -5589,7 +5584,7 @@ function plotCard(p) {
       iconStr='<span class="text-2xl">'+p.icon+'</span>';
       nameStr='<span class="text-sm font-extrabold text-soildark">'+p.cropName+'</span>';
       statusRow='<span class="text-xs '+lc+' font-bold">'+lb+'</span>';
-      progRow='<div class="w-full h-2 bg-earth/10 rounded-full overflow-hidden"><div class="progress-fill h-full '+bc+' rounded-full" style="width:'+p.progress+'%;transition:width 100ms linear"></div></div>';
+      progRow='<div class="w-full h-2 bg-earth/10 rounded-full overflow-hidden"><div class="progress-fill h-full '+bc+' rounded-full" style="width:'+p.progress+'%"></div></div>';
       bottomRow='<div class="flex justify-between text-xs text-earth/70 font-bold"><span>'+p.progress+'%</span><span>剩余 '+p.remaining+'</span></div>'+popoverHTML();
       break;
     }
@@ -5881,7 +5876,7 @@ function insertActionBar(mc) {
   mc.insertAdjacentHTML('afterbegin',
     '<div id="action-bar" class="mb-2 px-4 py-3 rounded-xl bg-green-100/60 border-2 border-green-300/40 flex items-center gap-3 text-sm">'+
       '<span class="text-green-700 text-xl" id="action-bar-icon">😌</span>'+
-      '<div class="flex-1"><div class="text-sm font-extrabold text-green-900" id="action-bar-title">闲适中...</div><div class="w-full h-2.5 bg-green-200 rounded-full overflow-hidden mt-1"><div class="progress-fill h-full bg-green-500 rounded-full" id="action-bar-fill" style="width:0%;transition:width 100ms linear"></div></div></div>'+
+      '<div class="flex-1"><div class="text-sm font-extrabold text-green-900" id="action-bar-title">闲适中...</div><div class="w-full h-2.5 bg-green-200 rounded-full overflow-hidden mt-1"><div class="progress-fill h-full bg-green-500 rounded-full" id="action-bar-fill" style="width:0%"></div></div></div>'+
       '<span class="text-sm text-green-700 tabular-nums font-extrabold" id="action-bar-time"></span>'+
       '<span class="text-xs text-green-600 font-bold" id="action-bar-queue"></span>'+
     '</div>'+
@@ -5976,35 +5971,6 @@ function initGame(){
   playerSkillLevels.gathering = 26;
 
   setInterval(gameTick,1000);
-    // 前端平滑渲染 Ticker（100ms 高频插值刷新进度条视觉，不干扰后台结算）
-  setInterval(function() {
-    if (currentActiveAction && currentActiveAction.totalS > 0) {
-      // 基于时间插值：每 100ms 微微推进，不受 1s gameTick 限制
-      var elapsed = _smoothLastTick > 0 ? (Date.now() - _smoothLastTick) / 1000 : 0;
-      var estRemaining = Math.max(0, currentActiveAction.remainingS - elapsed);
-      var pct = Math.round((1 - estRemaining / currentActiveAction.totalS) * 100);
-      var dispSec = Math.ceil(estRemaining);
-      if (currentPage === 'world') {
-        var nodeProgEl = document.querySelector('.node-action-progress');
-        if (nodeProgEl) {
-          var fillBar = nodeProgEl.querySelector('.progress-fill');
-          if (fillBar) fillBar.style.width = pct + '%';
-          var txtEl = nodeProgEl.querySelector('.progress-text');
-          if (txtEl) txtEl.textContent = dispSec;
-        }
-      }
-      if (currentActiveAction.plotId) {
-        var plotCardEl = document.querySelector('.plot-card[data-plot-id="'+currentActiveAction.plotId+'"]');
-        if (plotCardEl) {
-          var fillBar = plotCardEl.querySelector('.progress-fill');
-          if (fillBar) fillBar.style.width = pct + '%';
-          var botEl = plotCardEl.querySelector('.h-5.flex.items-center.justify-center');
-          if (botEl) botEl.textContent = dispSec + 's';
-        }
-      }
-      renderActionBar();
-    }
-  }, 100);
   renderAll();
   console.log('✅ 仙农 · 牧场日报 已启动');
   console.log('📋 采购官数据库：'+NPC_DATABASE.length+' 位');
