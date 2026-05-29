@@ -548,7 +548,7 @@ function sellItem(itemId, itemName, itemIcon, count, tasteTags, basePrice, mater
 // ============================================================
 var ALL_CROPS = [
   // 春
-  { id:'strawberry', seedId:'strawberry_seed', seedName:'草莓种子', name:'草莓', icon:'🍓', season:'春', subTabs:['农田'], growthM:120, tasteTags:['甜','酸'], basePrice:80, features:['极速成熟'], type:'农作物' },
+  { id:'strawberry', seedId:'strawberry_seed', seedName:'草莓种子', name:'草莓', icon:'🍓', season:'春', subTabs:['农田'], growthM:120, tasteTags:['甜','香'], basePrice:80, features:['极速成熟'], type:'农作物' },
   { id:'bamboo_shoot', seedId:'bamboo_seed', seedName:'春笋苗', name:'春笋', icon:'🎋', season:'春', subTabs:['农田'], growthM:90, tasteTags:['鲜','糯'], basePrice:60, features:['极速成熟'], type:'农作物' },
   { id:'pea', seedId:'pea_seed', seedName:'豌豆种子', name:'豌豆', icon:'🫛', season:'春', subTabs:['农田'], growthM:180, tasteTags:['鲜','甜'], basePrice:50, features:[], type:'农作物' },
   { id:'cherry', seedId:'cherry_seed', seedName:'樱桃树苗', name:'樱桃', icon:'🍒', season:'春', subTabs:['农田'], growthM:360, tasteTags:['甜','酸'], basePrice:150, features:['多倍产出'], type:'农作物' },
@@ -620,7 +620,7 @@ var ANIMAL_DATA = [
 ];
 function getAnimal(aid) { for (var i=0;i<ANIMAL_DATA.length;i++) { if (ANIMAL_DATA[i].id===aid) return ANIMAL_DATA[i]; } return null; }
 function isJuvenile(inst) { var ad = getAnimal(inst.speciesId); if (!ad || !ad.juvenileHours) return false; var juvenileMs = ad.juvenileHours * 3600 * 1000; return (Date.now() - (inst.birthTs||0)) < juvenileMs; }
-function getJuvenileRemaining(inst) { var ad = getAnimal(inst.speciesId); if (!ad || !ad.juvenileHours) return ''; var elapsed = Date.now() - (inst.birthTs||0); var remainMs = ad.juvenileHours * 3600 * 1000 - elapsed; if (remainMs <= 0) return ''; var h = Math.floor(remainMs/3600000); var m = Math.floor((remainMs%3600000)/60000); return h+'h '+m+'m'; }
+function getJuvenileRemaining(inst) { var ad = getAnimal(inst.speciesId); if (!ad || !ad.juvenileHours) return ''; var elapsed = Date.now() - (inst.birthTs||0); var remainMs = ad.juvenileHours * 3600 * 1000 - elapsed; if (remainMs <= 0) return ''; return formatTimeMS(Math.max(1, Math.round(remainMs/1000))); }
 function getJuvenilePercent(inst) { var ad = getAnimal(inst.speciesId); if (!ad || !ad.juvenileHours) return 0; var elapsed = Date.now() - (inst.birthTs||0); var totalMs = ad.juvenileHours * 3600 * 1000; return Math.min(100, Math.round(elapsed/totalMs*100)); }
 
 // ============================================================
@@ -1106,6 +1106,8 @@ var dailyEvents = [
   { icon:'⚡', text:'今晚有流星雨，血祭神殿祈福效果增强' }
 ];
 
+var quality = 1;
+var qualName = '';
 var activityLog = [];
 function pushLog(action, itemId, itemName, icon, count) {
   var last = activityLog[activityLog.length-1];
@@ -1210,7 +1212,7 @@ var FERTILIZER_TYPES = {
 // 兼容别名（历史代码使用 FERTILER_TYPES 拼写）
 var FERTILER_TYPES = FERTILIZER_TYPES;
 
-function rollQuality(farmingLv, seedLv, fertType) {
+function rollQuality(farmingLv, seedLv, fertType) { var quality=1;
   var ft = FERTILER_TYPES[fertType] || { qualBonus: 0, lv4Bonus: 0 };
   var qBonus = (farmingLv - 1) * 0.005 + (seedLv || 0) * 0.02 + (ft.qualBonus || 0);
   var lv4Bonus = (seedLv || 0) * 0.005 + (ft.lv4Bonus || 0);
@@ -1899,7 +1901,7 @@ var seasonTimerSeconds = 71*3600+59*60+48;
 // ============================================================
 //  14. Tick
 // ============================================================
-function gameTick() {
+function gameTick() { try {
   if (seasonTimerSeconds>0) { seasonTimerSeconds-=1; } else { seasonTimerSeconds=SEASON_DURATION-1; advanceSeason(); }
   if (dayTimer>0) { dayTimer-=1; } else { dayTimer=DAY_DURATION; generateDailyNPCs(); pushLog('新的一天','','游客刷新','🚶',0);
     // 每日结算：未喂养的动物扣减好感度，重置 isFed
@@ -2077,7 +2079,11 @@ function gameTick() {
     }
   }
 
-  if (!currentActiveAction) { renderActionBar(); return; }
+  // 队列安全检测：若当前无行动但队列有挂起项，强制处理
+  if (!currentActiveAction) {
+    if (globalActionQueue.length > 0) { startNextQueueAction(); }
+    renderActionBar(); return;
+  }
   // 缓冲等待中：不扣减倒计时，仅刷新显示
   if (currentActiveAction._bufferTimer) { renderActionBar(); return; }
   currentActiveAction.remainingS-=1;
@@ -2123,10 +2129,13 @@ function gameTick() {
     }
   }
   renderActionBar();
+  } catch(e) { showToast('⚠️ 游戏异常: '+e.message); currentActiveAction=null; if(globalActionQueue.length>0)startNextQueueAction(); }
 }
 
 function advanceSeason() { var o=['春','夏','秋','冬']; var idx=o.indexOf(currentSeason); currentSeason=o[(idx+1)%4]; if (currentSeason==='冬' && !greenhouseUnlocked) { greenhouseUnlocked=true; try { localStorage.setItem('greenhouse_unlocked','1'); } catch(e) {} showToast('🏠 温室已解锁！第一个冬季到来，温室分页正式开放'); } showToast('🍂 季节更替：'+currentSeason+'季来临！'); for (var i=0;i<plots.length;i++) { var p=plots[i]; if (p.status==='GROWING'&&p.startedSeason&&p.startedSeason!==currentSeason&&p.subTab!=='温室') { p.remainingS*=2; p.totalS=p.remainingS; p.remaining=formatTime(p.remainingS); } } }
 function completeNodeAction(a) {
+  var quality = 1; var qualName = ''; // 安全垫：确保该函数内所有 quality 引用不崩溃
+  try {
   var nodeId = a.nodeId;
   var nodeType = a.nodeType;
   var nodeLevel = a.nodeLevel || 1;
@@ -2357,14 +2366,15 @@ function completeNodeAction(a) {
   if (playerSkillXP.gathering>=xpNeed) { playerSkillXP.gathering-=xpNeed; playerSkillLevels.gathering=Math.min(99,playerSkillLevels.gathering+1); showToast('⭐ 采集技能升级！Lv.'+playerSkillLevels.gathering); }
   pushLog('采集收获', itemId, itemName, itemIcon, qty);
   showToast('⚒️ 采集完成！获得 '+qualityName(itemName,ql)+' ×'+qty+'（+'+xp+' 采集经验）');
-  currentActiveAction=null;
-  if (globalActionQueue.length>0) startNextQueueAction();
+  // 自循环挂机：自动开始下一轮
   renderAll();
+  doNodeAction(a.nodeId, a.nodeType, a.nodeLevel);
+  } catch(e) { showToast("⚠️ 采集结算异常: "+e.message); currentActiveAction=null; renderAll(); }
 }
 
-function advanceActionStep() { var a=currentActiveAction; if (a.type==='NODE') { completeNodeAction(a); return; } if (a.type==='HUSBANDRY') { var inst=playerAnimalInstances.find(function(ai){return ai.uid===a.uid;}); if (inst&&a.action==='comfort') { var juvMult=isJuvenile(inst)?1.25:1; inst.affection=Math.min(1000,inst.affection+Math.ceil(15*juvMult)); inst.lastComfortTs=Date.now(); showToast('🤝 已安抚 '+inst.name+' · 好感 +'+Math.ceil(15*juvMult)+(isJuvenile(inst)?' (幼年+25%)':'')); } else if (inst&&a.action==='feed') { var juvMult2=isJuvenile(inst)?1.25:1; // 扣除粮草（仅在实际完成时扣除）
+function advanceActionStep() { var quality=1; var qualName=''; var a=currentActiveAction; if (a.type==='NODE') { completeNodeAction(a); return; } if (a.type==='HUSBANDRY') { var inst=playerAnimalInstances.find(function(ai){return ai.uid===a.uid;}); if (inst&&a.action==='comfort') { var juvMult=isJuvenile(inst)?1.25:1; inst.affection=Math.min(1000,inst.affection+Math.ceil(15*juvMult)); inst.lastComfortTs=Date.now(); showToast('🤝 已安抚 '+inst.name+' · 好感 +'+Math.ceil(15*juvMult)+(isJuvenile(inst)?' (幼年+25%)':'')); } else if (inst&&a.action==='feed') { var juvMult2=isJuvenile(inst)?1.25:1; // 扣除粮草（仅在实际完成时扣除）
   if (a.cropItemId) { removeFromWarehouse(a.cropItemId, 1, a.cropQuality||1); }
-  inst.affection=Math.min(1000,inst.affection+Math.ceil(10*juvMult2)); inst.isFed=true; if (inst.status==='growing') inst.remainingS=Math.max(1,inst.remainingS-600); inst.lastFedTs=Date.now(); showToast('🍎 喂食 '+inst.name+' · 好感 +'+Math.ceil(10*juvMult2)+' · -10min'+(isJuvenile(inst)?' (幼年+25%)':'')); } currentActiveAction=null; if (globalActionQueue.length>0) startNextQueueAction(); renderAll(); return; } var p=findPlot(a.plotId); if (a.stepIndex<ACTION_STEPS.length-1) { a.stepIndex+=1; var ns=ACTION_STEPS[a.stepIndex]; a.remainingS=ns.duration; a.totalS=ns.duration; if (p) { p.progress=0; p.remaining=ns.duration+'s'; } } else { if (p) { p.status='GROWING'; p.resumeFrom=null; p.wiltTimer=null; p.isPreTilled=false; p.remainingS=p.totalS; p.progress=0; p.remaining=formatTime(p.remainingS); showToast('✅ '+p.cropName+' 进入自然生长'); pushLog('种植完成',p.cropId,p.cropName,p.icon,1); } currentActiveAction=null; if (globalActionQueue.length>0) startNextQueueAction(); } renderAll(); }
+  inst.affection=Math.min(1000,inst.affection+Math.ceil(10*juvMult2)); inst.isFed=true; if (inst.status==='growing') inst.remainingS=Math.max(1,inst.remainingS-600); if(isJuvenile(inst))inst.birthTs=Math.max(1,inst.birthTs-600000); inst.lastFedTs=Date.now(); showToast('🍎 喂食 '+inst.name+' · 好感 +'+Math.ceil(10*juvMult2)+' · -10min'+(isJuvenile(inst)?' (幼年+25%)':'')); } currentActiveAction=null; if (globalActionQueue.length>0) startNextQueueAction(); renderAll(); return; } var p=findPlot(a.plotId); if (a.stepIndex<ACTION_STEPS.length-1) { a.stepIndex+=1; var ns=ACTION_STEPS[a.stepIndex]; a.remainingS=ns.duration; a.totalS=ns.duration; if (p) { p.progress=0; p.remaining=ns.duration+'s'; } } else { if (p) { p.status='GROWING'; p.resumeFrom=null; p.wiltTimer=null; p.isPreTilled=false; p.remainingS=p.totalS; p.progress=0; p.remaining=formatTime(p.remainingS); showToast('✅ '+p.cropName+' 进入自然生长'); pushLog('种植完成',p.cropId,p.cropName,p.icon,1); } currentActiveAction=null; if (globalActionQueue.length>0) startNextQueueAction(); } renderAll(); }
 
 // ============================================================
 //  14b. 钓鱼/蟹笼/宝箱 核心引擎
@@ -3065,7 +3075,7 @@ function renderNodeCard(node) {
     var isActiveNode = currentActiveAction && currentActiveAction.type==='NODE' && currentActiveAction.nodeId===node.id;
     if (isActiveNode) {
       var pct = Math.round((1-currentActiveAction.remainingS/currentActiveAction.totalS)*100);
-      track1HTML = '<div class="node-action-progress px-3 py-2 rounded-lg text-xs font-extrabold text-amber-800 bg-amber-100 border-2 border-amber-300/50 w-full text-center">⏳ 采集中... <span class="progress-text">'+currentActiveAction.remainingS+'</span>s<div class="w-full h-2 bg-amber-200 rounded-full overflow-hidden mt-1"><div class="progress-fill h-full bg-amber-500 rounded-full" style="transition:width 0.3s linear;width:'+pct+'%"></div></div></div>';
+      track1HTML = '<div class="node-action-progress px-3 py-2 rounded-lg text-xs font-extrabold text-amber-800 bg-amber-100 border-2 border-amber-300/50 w-full text-center cursor-pointer" onclick="cancelNodeAction()" title="点击取消挂机">⏳ 采集中... <span class="progress-text">'+currentActiveAction.remainingS+'</span>s <span class="text-red-500">(点击取消)</span><div class="w-full h-2 bg-amber-200 rounded-full overflow-hidden mt-1"><div class="progress-fill h-full bg-amber-500 rounded-full" style="transition:width 0.3s linear;width:'+pct+'%"></div></div></div>';
     } else {
       track1HTML = '<button class="node-action-btn px-3 py-2 rounded-lg text-xs font-extrabold text-white bg-green-600/80 hover:bg-green-600 border-2 border-green-500/30 transition-colors w-full" data-node-id="'+node.id+'" data-node-type="'+node.type+'" data-node-level="'+level+'">'+(nodeTypeLabels[node.type]||'🚶 玩家亲自挂机')+'</button>';
     }
@@ -3270,6 +3280,15 @@ function bindNodeButtons() {
   }
 }
 
+// ---- 取消挂机 ----
+function cancelNodeAction() {
+  if (currentActiveAction && currentActiveAction.type==='NODE') {
+    if (currentActiveAction._bufferTimer) { clearTimeout(currentActiveAction._bufferTimer); currentActiveAction._bufferTimer=null; }
+    currentActiveAction=null;
+    showToast('⏹️ 已取消挂机');
+    renderAll();
+  }
+}
 // ---- 点位玩家挂机 ----
 var currentNodeAction = null;
 function startNodeAction(nodeId, nodeType, nodeLevel) {
@@ -3309,6 +3328,14 @@ if (!window._nodeInterruptPatched) {
         saveFarmingProgress(); // 种植分段保存（stepIndex 0/1/2）
         currentActiveAction = null;
       }
+      // 全量清队：回滚所有排队地块的状态
+      for (var qi=0;qi<globalActionQueue.length;qi++) {
+        var qa=globalActionQueue[qi];
+        if (qa.type==='FARMING' || !qa.type) {
+          var qp=findPlot(qa.plotId);
+          if (qp && qp.status==='PREPARING') { refundSeed(qp); resetPlotToEmpty(qp); }
+        }
+      }
       globalActionQueue = [];
       document.getElementById('interrupt-modal').classList.add('hidden');
       doNodeAction(pending.id, pending.type, pending.level);
@@ -3320,7 +3347,7 @@ if (!window._nodeInterruptPatched) {
 }
 
 function doNodeAction(nodeId, nodeType, nodeLevel) {
-  var duration = nodeType==='mining' ? 45 : nodeType==='logging' ? 30 : nodeType==='fishing' ? 120 : nodeType==='hunting' ? 60 : nodeType==='gather' ? 20 : nodeType==='bug' ? 15 : 30;
+  var duration = 3;
   currentActiveAction = {
     type: 'NODE',
     nodeId: nodeId,
@@ -3913,7 +3940,7 @@ function renderHusbandryPage(mc) {
       var ws = warehouseSlots[wi];
       if (ws.type==='CROP' && ws.count>0) {
         var sel = ws.itemId===feedCropId ? ' selected' : '';
-        cropOptions += '<option value="'+ws.itemId+'"'+sel+'>'+ws.icon+' '+ws.name+' ('+ws.count+')</option>';
+        var qc=({1:'#1e293b',2:'#2563eb',3:'#9333ea',4:'#f43f5e',5:'#f59e0b'})[ws.quality]||'#1e293b';var qc2=({1:'#1e293b',2:'#2563eb',3:'#9333ea',4:'#f43f5e',5:'#f59e0b'})[ws.quality]||'#1e293b';cropOptions += '<option value="'+ws.itemId+'"'+sel+' style="color:'+qc2+'">'+ws.icon+' '+qualityName(ws.name,ws.quality)+' ('+ws.count+')</option>';
       }
     }
     feedHTML = '<div class="mt-2 pt-2 border-t border-soildark/15">'+
@@ -3968,7 +3995,7 @@ function comfortAnimal(uid) {
   }
   if (isPlayerBusy()) {
     var bldInfo2 = getAnimalBuildingInfo(uid);
-    if (currentActiveAction.type==='FARMING') {
+    if (currentActiveAction.type==='FARMING' || currentActiveAction.type==='NODE') {
       pendingInterrupt = { plotId:null, seedId:null, source:'husbandryAction', skipTilling:false, targetRegion:null, targetSubTab:null,
         husbandryAction: { type:'HUSBANDRY', action:'comfort', uid:uid, icon:'🤝', label:'正在 ['+(bldInfo2?bldInfo2.tierName:'未知')+'] 安抚 '+inst.name } };
       showInterruptModal('安抚 '+inst.name);
@@ -4049,7 +4076,7 @@ function doFeedAnimal(uid, cropItemId, cropQuality) {
       if (currentActiveAction._bufferTimer) { clearTimeout(currentActiveAction._bufferTimer); currentActiveAction._bufferTimer=null; }
       currentActiveAction=null;
       globalActionQueue=[];
-    } else if (currentActiveAction.type==='FARMING') {
+    } else if (currentActiveAction.type==='FARMING' || currentActiveAction.type==='NODE') {
       // 种植进行中：弹窗打断确认
       pendingInterrupt = { plotId:null, seedId:null, source:'husbandryAction', skipTilling:false, targetRegion:null, targetSubTab:null,
         husbandryAction: { type:'HUSBANDRY', action:'feed', uid:uid, cropItemId:cropItemId, cropQuality:cropQuality, icon:'🍎', label:'正在 ['+(bldInfo3?bldInfo3.tierName:'未知')+'] 喂养 '+inst.name } };
@@ -4425,7 +4452,7 @@ function oneClickFeedBuilding(buildingType, slotIdx) {
     var juvMult4 = isJuvenile(inst) ? 1.25 : 1;
     inst.affection = Math.min(100, inst.affection + Math.ceil(10 * juvMult4));
     inst.lastFedTs = Date.now();
-    if (inst.status==='growing') inst.remainingS = Math.max(1, inst.remainingS-600);
+    if (inst.status==='growing') { inst.remainingS = Math.max(1, inst.remainingS-600); if(isJuvenile(inst))inst.birthTs=Math.max(1,inst.birthTs-600000); }
     playerSkillXP.gathering = (playerSkillXP.gathering||0) + 5;
     var xpNeed3 = playerSkillLevels.gathering*100;
     if (playerSkillXP.gathering>=xpNeed3) { playerSkillXP.gathering-=xpNeed3; playerSkillLevels.gathering=Math.min(99,playerSkillLevels.gathering+1); }
@@ -5666,7 +5693,7 @@ var sbs=document.querySelectorAll('#seed-list .seed-opt:not([disabled])');for(va
 function closeSeedModal(){document.getElementById('seed-modal').classList.add('hidden');currentPlotId=null;}
 function confirmSeed(seedId,source){var p=findPlot(currentPlotId);if(!p)return;var valid=p.status==='EMPTY'||(p.status==='TILLED'&&p.isPreTilled&&!p.cropId);if(!valid)return;var crop=getCrop(seedId);if(!crop)return;if(source==='warehouse'){if((playerSeeds[seedId]||0)<=0)return;playerSeeds[seedId]-=1;}else{var sp=Math.floor(crop.basePrice*0.6);if(gold<sp){showToast('金币不足！');return;}gold-=sp;updateGoldDisplay();}var skip=p.isPreTilled;p.status='PREPARING';p.cropId=seedId;p.cropName=crop.name;p.icon=crop.icon;p.startedSeason=currentSeason;p.totalS=crop.growthM*60;p.remainingS=crop.growthM*60;p.progress=0;p.resumeFrom=null;p.wiltTimer=null;p.isPreTilled=false;p.features=crop.features||[];closeSeedModal();if(isPlayerBusy()){if(currentActiveAction.region===currentRegion){globalActionQueue.push({type:'FARMING',region:currentRegion,subTab:currentSubTab,plotId:p.id,seedId:seedId,icon:crop.icon,name:crop.name,growthS:crop.growthM*60});p.remaining='排队中';showToast(p.cropName+' 已加入队列（第'+globalActionQueue.length+'位）');renderAll();}else{pendingInterrupt={plotId:p.id,seedId:seedId,source:source,skipTilling:skip};var cp=findPlot(currentActiveAction.plotId);showInterruptModal('种植',cp);}return;}startFarmingAction(p,skip);}
 function startFarmingAction(p,skip){
-  // 互斥：采集/伐木/采矿等 NODE 行动自动强制取消；其他行动走弹窗确认
+  // 互斥：NODE/任何进度条行动自动强制取消（含缓冲计时器）
   if (currentActiveAction && currentActiveAction.type==='NODE') {
     if (currentActiveAction._bufferTimer) { clearTimeout(currentActiveAction._bufferTimer); currentActiveAction._bufferTimer=null; }
     currentActiveAction=null;
@@ -5686,7 +5713,7 @@ function startFarmingAction(p,skip){
 //  25. 打断/收获/施肥/清除
 // ============================================================
 function tryCrossRegionAction(tr,ts){if(!isPlayerBusy()){showToast('当前无行动，无需打断');return;}pendingInterrupt={plotId:null,seedId:null,source:'crossRegion',skipTilling:false,targetRegion:tr,targetSubTab:ts};showInterruptModal(ts);}
-function showInterruptModal(nl){var icon='❓',label='未知';if(currentActiveAction){if(currentActiveAction.type==='HUSBANDRY'){icon=currentActiveAction.icon||'🐾';label=currentActiveAction.label||'养殖操作';}else{var step=ACTION_STEPS[currentActiveAction.stepIndex];icon=step.icon;label=step.label;}}var cr=REGIONS.find(function(r){return r.id===currentRegion;});var isHA=pendingInterrupt&&pendingInterrupt.husbandryAction;var msg='角色当前在<b class=text-soildark>'+(cr?cr.icon:'')+' '+(cr?cr.label:'')+'</b> 执行 <b class=text-soildark>'+icon+' '+label+'</b>，<br>是否打断并';if(isHA){msg+='执行 <b class=text-soildark>'+nl+'</b>？';}else{var tr=(pendingInterrupt&&pendingInterrupt.targetRegion)?REGIONS.find(function(r){return r.id===pendingInterrupt.targetRegion;}):REGIONS.find(function(r){return r.id===currentRegion;});msg+='切换至 <b class=text-soildark>'+(tr?tr.icon:'')+' '+(tr?tr.label:'')+' · '+nl+'</b>？';}document.getElementById('interrupt-msg').innerHTML=msg;document.getElementById('interrupt-modal').classList.remove('hidden');}
+function showInterruptModal(nl){var icon='❓',label='未知';if(currentActiveAction){if(currentActiveAction.type==='HUSBANDRY'){icon=currentActiveAction.icon||'🐾';label=currentActiveAction.label||'养殖操作';}else if(currentActiveAction.type==='NODE'){icon=currentActiveAction.icon||'⚒️';label=currentActiveAction.label||'资源采集';}else{var step=ACTION_STEPS[currentActiveAction.stepIndex];if(step){icon=step.icon;label=step.label;}}}var cr=REGIONS.find(function(r){return r.id===currentRegion;});var isHA=pendingInterrupt&&pendingInterrupt.husbandryAction;var msg='角色当前在<b class=text-soildark>'+(cr?cr.icon:'')+' '+(cr?cr.label:'')+'</b> 执行 <b class=text-soildark>'+icon+' '+label+'</b>，<br>是否打断并';if(isHA){msg+='执行 <b class=text-soildark>'+nl+'</b>？';}else{var tr=(pendingInterrupt&&pendingInterrupt.targetRegion)?REGIONS.find(function(r){return r.id===pendingInterrupt.targetRegion;}):REGIONS.find(function(r){return r.id===currentRegion;});msg+='切换至 <b class=text-soildark>'+(tr?tr.icon:'')+' '+(tr?tr.label:'')+' · '+nl+'</b>？';}document.getElementById('interrupt-msg').innerHTML=msg;document.getElementById('interrupt-modal').classList.remove('hidden');}
 function confirmInterrupt(){if(currentActiveAction){if(currentActiveAction.type==='HUSBANDRY'){currentActiveAction=null;}else{saveFarmingProgress();currentActiveAction=null;}}for(var i=0;i<globalActionQueue.length;i++){var qa=globalActionQueue[i];if(qa.type==='HUSBANDRY')continue;var qp=findPlot(qa.plotId);if(qp&&qp.status==='PREPARING'){refundSeed(qp);resetPlotToEmpty(qp);}}globalActionQueue=globalActionQueue.filter(function(q){return q.type==='HUSBANDRY';});document.getElementById('interrupt-modal').classList.add('hidden');if(pendingInterrupt){var pi=pendingInterrupt;pendingInterrupt=null;if(pi.husbandryAction){var ha=pi.husbandryAction;currentActiveAction={type:'HUSBANDRY',action:ha.action,uid:ha.uid,cropItemId:ha.cropItemId||null,cropQuality:ha.cropQuality||1,remainingS:5,totalS:5,icon:ha.icon,label:ha.label};renderAll();showToast('已打断并执行 '+ha.label);return;}if(pi.targetRegion){switchRegion(pi.targetRegion);currentSubTab=pi.targetSubTab||REGIONS.find(function(r){return r.id===pi.targetRegion;}).subTabs[0];renderAll();showToast('已打断并切换区域');return;}if(pi.plotId){var tp=findPlot(pi.plotId);if(tp){var sk=pi.skipTilling||tp.isPreTilled;startFarmingAction(tp,sk||false);}}}renderAll();showToast('已打断当前行动');}
 function cancelInterrupt(){if(pendingInterrupt&&pendingInterrupt.plotId&&!pendingInterrupt.targetRegion){var p=findPlot(pendingInterrupt.plotId);if(p&&p.cropId){refundSeed(p);resetPlotToEmpty(p);}}pendingInterrupt=null;document.getElementById('interrupt-modal').classList.add('hidden');renderAll();}
 function refundSeed(p){if(!p.cropId)return;delete lockedSeedIds[p.cropId];playerSeeds[p.cropId]=(playerSeeds[p.cropId]||0)+1;}
