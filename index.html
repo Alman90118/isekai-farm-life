@@ -2126,7 +2126,7 @@ function gameTick() { try { _smoothLastTick = Date.now();
       var fillBar = plotCardEl.querySelector('.progress-fill');
       if (fillBar) fillBar.style.width = pct + '%';
       var botEl = plotCardEl.querySelector('.h-5.flex.items-center.justify-center');
-      if (botEl) botEl.innerHTML = '<span class="text-xs text-green-700 font-extrabold">'+pct+'%</span>';
+      if (botEl) botEl.textContent = dispSec + 's';
     }
   }
   renderActionBar();
@@ -5999,7 +5999,7 @@ function initGame(){
           var fillBar = plotCardEl.querySelector('.progress-fill');
           if (fillBar) fillBar.style.width = pct + '%';
           var botEl = plotCardEl.querySelector('.h-5.flex.items-center.justify-center');
-          if (botEl) botEl.innerHTML = '<span class="text-xs text-green-700 font-extrabold">'+pct+'%</span>';
+          if (botEl) botEl.textContent = dispSec + 's';
         }
       }
       renderActionBar();
