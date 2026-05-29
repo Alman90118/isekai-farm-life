@@ -2125,7 +2125,7 @@ function gameTick() { try {
       var fillBar = plotCardEl.querySelector('.progress-fill');
       if (fillBar) fillBar.style.width = pct + '%';
       var botEl = plotCardEl.querySelector('.h-5.flex.items-center.justify-center');
-      if (botEl) botEl.innerHTML = '<span class="text-xs text-green-700 font-extrabold">'+pct+'%</span>';
+      if (botEl) botEl.innerHTML = '<span class="text-xs text-amber-600 tabular-nums font-extrabold">'+currentActiveAction.remainingS+'s</span>';
     }
   }
   renderActionBar();
@@ -5585,7 +5585,7 @@ function plotCard(p) {
       nameStr='<span class="text-sm font-extrabold text-soildark">'+p.cropName+'</span>';
       statusRow='<span class="text-xs '+lc+' font-bold">'+lb+'</span>';
       progRow='<div class="w-full h-2 bg-earth/10 rounded-full overflow-hidden"><div class="progress-fill h-full '+bc+' rounded-full" style="width:'+p.progress+'%"></div></div>';
-      bottomRow='<div class="flex justify-between text-xs text-earth/70 font-bold"><span>'+p.progress+'%</span><span>剩余 '+p.remaining+'</span></div>'+popoverHTML();
+      bottomRow='<div class="flex justify-between text-xs text-earth/70 font-bold"><span>'+formatTimeMS(p.remainingS)+'</span><span>剩余 '+p.remaining+'</span></div>'+popoverHTML();
       break;
     }
 
@@ -5659,7 +5659,7 @@ function tickPlotProgresses() {
       var bottomEl = card.querySelector('.h-5.flex.items-center.justify-center');
       if (p.status === 'GROWING') {
         if (fill) fill.style.width = p.progress + '%';
-        if (bottomEl) bottomEl.innerHTML = '<div class="flex justify-between text-xs text-earth/70 font-bold"><span>'+p.progress+'%</span><span>剩余 '+p.remaining+'</span></div>';
+        if (bottomEl) bottomEl.innerHTML = '<div class="flex justify-between text-xs text-earth/70 font-bold"><span>'+formatTimeMS(p.remainingS)+'</span><span>剩余 '+p.remaining+'</span></div>';
       } else if (p.status === 'TILLED' && p.wiltTimer !== null && p.wiltTimer > 0) {
         var wp = Math.round((1 - p.wiltTimer / 600) * 100);
         if (fill) fill.style.width = wp + '%';
